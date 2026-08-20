@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "react-day-picker/style.css";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f5f7f8;
+  --foreground: #0f172a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+::selection { background: #cce8ec; color: #0f172a; }
+
+.keepit-calendar {
+  --rdp-accent-color: #167d8d;
+  --rdp-accent-background-color: #e7f3f5;
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  --rdp-selected-border: 0;
+  --rdp-today-color: #167d8d;
+  color: #334155;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.keepit-calendar .rdp-month_caption {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.keepit-calendar .rdp-weekday {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.keepit-calendar .rdp-day_button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.keepit-calendar .rdp-day_button {
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.keepit-calendar .rdp-selected .rdp-day_button {
+  background: #167d8d;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.keepit-calendar .rdp-button_previous:focus-visible,
+.keepit-calendar .rdp-button_next:focus-visible,
+.keepit-calendar .rdp-day_button:focus-visible {
+  border-radius: 0.6rem;
+  outline: 2px solid #9bc8ce;
+  outline-offset: 1px;
+}
+
+.keepit-calendar .rdp-today:not(.rdp-selected) .rdp-day_button {
+  background: #e7f3f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b1120;
+  --foreground: #e2e8f0;
+}
+
+.dark body { background: #0b1120; color: #e2e8f0; }
+.dark .bg-white { background-color: #111827; }
+.dark .bg-white\/90 { background-color: rgb(17 24 39 / 0.92); }
+.dark .bg-slate-50 { background-color: #172033; }
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/70 { background-color: rgb(23 32 51 / 0.7); }
+.dark .bg-slate-100 { background-color: #1e293b; }
+.dark .bg-slate-200 { background-color: #334155; }
+.dark .bg-slate-200\/70 { background-color: rgb(51 65 85 / 0.7); }
+.dark .bg-emerald-50 { background-color: #102c26; }
+.dark .bg-amber-50 { background-color: #302711; }
+.dark .bg-rose-50 { background-color: #321923; }
+.dark .bg-blue-50 { background-color: #14233d; }
+.dark [class~="bg-[#e4f2f4]"],
+.dark [class~="bg-[#e3f2f4]"],
+.dark [class~="bg-[#edf7f8]"] { background-color: #15323a; }
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800 { color: #f1f5f9; }
+.dark .text-slate-700,
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #7f8da3; }
+.dark .border-slate-100 { border-color: #263244; }
+.dark .border-slate-200 { border-color: #334155; }
+.dark .border-slate-300 { border-color: #475569; }
+.dark .border-amber-200 { border-color: #765f24; }
+.dark .text-amber-800 { color: #fcd875; }
+.dark input,
+.dark textarea,
+.dark select { background-color: #111827; border-color: #334155; color: #e2e8f0; }
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748b; }
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover { background-color: #1e293b; }
+.dark .keepit-calendar { color: #cbd5e1; }
+.dark .keepit-calendar .rdp-day_button:hover:not(:disabled) { background: #1e293b; }
+
+.note-title-editor .ProseMirror,
+.note-editor .ProseMirror {
+  min-height: 100%;
+  outline: none;
+}
+
+.note-title-editor .ProseMirror p,
+.note-card-title p {
+  margin: 0;
+}
+
+.note-editor .ProseMirror p.is-editor-empty:first-child::before,
+.note-title-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: #cbd5e1;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.note-editor ul:not([data-type="taskList"]) {
+  list-style: disc;
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.note-editor ul[data-type="taskList"] {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+}
+
+.note-editor ul[data-type="taskList"] > li {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.note-editor ul[data-type="taskList"] label {
+  margin-top: 0.2rem;
+  user-select: none;
+}
+
+.note-editor ul[data-type="taskList"] input {
+  accent-color: #167d8d;
+  cursor: pointer;
+}
+
+.note-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.note-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
