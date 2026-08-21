@@ -26,7 +26,7 @@ const DatePicker = ({ value, onChange }) => {
     <Popover.Root open={open} onOpenChange={setOpen}>
       <div className="relative mt-2">
         <Popover.Trigger asChild>
-          <button type="button" aria-label="Choose due date" className={`flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 pr-11 text-left text-sm outline-none transition hover:border-slate-300 focus:border-[#74aeb7] focus:ring-2 focus:ring-[#dceff1] ${value ? "text-slate-700" : "text-slate-400"}`}>
+          <button type="button" aria-label="Choose due date" className={`flex h-11 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 pr-11 text-left text-sm outline-none transition hover:border-slate-300 focus:border-[#74aeb7] focus:ring-2 focus:ring-[#dceff1] ${value ? "text-slate-700" : "text-slate-400"}`}>
             <CalendarDays size={16} className="shrink-0 text-slate-400" />
             <span className="truncate">{displayDate(value)}</span>
           </button>
@@ -35,7 +35,7 @@ const DatePicker = ({ value, onChange }) => {
       </div>
 
       <Popover.Portal>
-        <Popover.Content sideOffset={8} align="start" collisionPadding={12} className="z-[90] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl outline-none">
+        <Popover.Content sideOffset={8} align="start" collisionPadding={12} className="z-[90] rounded-xl border border-slate-200 bg-white p-3 shadow-xl outline-none">
           <DayPicker
             mode="single"
             animate

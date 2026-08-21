@@ -3,8 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f5f7f8;
-  --foreground: #0f172a;
+  --background: #f7f7f5;
+  --foreground: #171a1a;
+  --surface: #ffffff;
+  --surface-muted: #f2f3f1;
+  --border: #e3e6e4;
+  --accent: #176f76;
+  --accent-soft: #e9f2f2;
 }
 
 @theme inline {
@@ -20,7 +25,8 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  letter-spacing: -0.006em;
 }
 
 button, input, textarea, select {
@@ -30,6 +36,32 @@ button, input, textarea, select {
 }
 button, a { -webkit-tap-highlight-color: transparent; }
 ::selection { background: #cce8ec; color: #0f172a; }
+
+/* Shared visual system: quiet surfaces, subtle depth, and one teal accent. */
+.border-slate-100 { border-color: #eceeec; }
+.border-slate-200 { border-color: var(--border); }
+.bg-slate-50 { background-color: var(--surface-muted); }
+.bg-blue-50 { background-color: var(--accent-soft); }
+.text-blue-500,
+.text-blue-600 { color: var(--accent); }
+.shadow-2xl { box-shadow: 0 18px 48px rgb(18 25 25 / 0.14); }
+.shadow-xl { box-shadow: 0 12px 32px rgb(18 25 25 / 0.12); }
+.rounded-xl { border-radius: 0.625rem; }
+.rounded-2xl { border-radius: 0.875rem; }
+.rounded-3xl { border-radius: 1rem; }
+
+button, a, input, textarea {
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+input, textarea {
+  caret-color: var(--accent);
+}
+
+:focus-visible {
+  outline-color: #73a9ad;
+}
 
 .keepit-calendar {
   --rdp-accent-color: #167d8d;
@@ -90,24 +122,29 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .dark {
   color-scheme: dark;
-  --background: #0b1120;
-  --foreground: #e2e8f0;
+  --background: #0f1111;
+  --foreground: #e7e9e8;
+  --surface: #161919;
+  --surface-muted: #1c2020;
+  --border: #2b3030;
+  --accent: #72aeb2;
+  --accent-soft: #1b3031;
 }
 
-.dark body { background: #0b1120; color: #e2e8f0; }
-.dark .bg-white { background-color: #111827; }
-.dark .bg-white\/90 { background-color: rgb(17 24 39 / 0.92); }
-.dark .bg-slate-50 { background-color: #172033; }
+.dark body { background: #0f1111; color: #e7e9e8; }
+.dark .bg-white { background-color: #161919; }
+.dark .bg-white\/90 { background-color: rgb(22 25 25 / 0.94); }
+.dark .bg-slate-50 { background-color: #1c2020; }
 .dark .bg-slate-50\/50,
 .dark .bg-slate-50\/60,
 .dark .bg-slate-50\/70 { background-color: rgb(23 32 51 / 0.7); }
-.dark .bg-slate-100 { background-color: #1e293b; }
-.dark .bg-slate-200 { background-color: #334155; }
+.dark .bg-slate-100 { background-color: #232828; }
+.dark .bg-slate-200 { background-color: #303636; }
 .dark .bg-slate-200\/70 { background-color: rgb(51 65 85 / 0.7); }
 .dark .bg-emerald-50 { background-color: #102c26; }
 .dark .bg-amber-50 { background-color: #302711; }
 .dark .bg-rose-50 { background-color: #321923; }
-.dark .bg-blue-50 { background-color: #14233d; }
+.dark .bg-blue-50 { background-color: var(--accent-soft); }
 .dark [class~="bg-[#e4f2f4]"],
 .dark [class~="bg-[#e3f2f4]"],
 .dark [class~="bg-[#edf7f8]"] { background-color: #15323a; }
@@ -118,18 +155,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .dark .text-slate-600 { color: #cbd5e1; }
 .dark .text-slate-500 { color: #94a3b8; }
 .dark .text-slate-400 { color: #7f8da3; }
-.dark .border-slate-100 { border-color: #263244; }
-.dark .border-slate-200 { border-color: #334155; }
-.dark .border-slate-300 { border-color: #475569; }
+.dark .border-slate-100 { border-color: #242929; }
+.dark .border-slate-200 { border-color: var(--border); }
+.dark .border-slate-300 { border-color: #3b4242; }
 .dark .border-amber-200 { border-color: #765f24; }
 .dark .text-amber-800 { color: #fcd875; }
 .dark input,
 .dark textarea,
-.dark select { background-color: #111827; border-color: #334155; color: #e2e8f0; }
+.dark select { background-color: #161919; border-color: #303636; color: #e7e9e8; }
 .dark input::placeholder,
 .dark textarea::placeholder { color: #64748b; }
 .dark .hover\:bg-slate-50:hover,
-.dark .hover\:bg-slate-100:hover { background-color: #1e293b; }
+.dark .hover\:bg-slate-100:hover { background-color: #232828; }
 .dark .keepit-calendar { color: #cbd5e1; }
 .dark .keepit-calendar .rdp-day_button:hover:not(:disabled) { background: #1e293b; }
 

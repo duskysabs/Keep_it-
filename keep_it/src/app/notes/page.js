@@ -1,15 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, Archive, CheckCircle2, Files, FolderClosed, Pin, Plus, Search } from "lucide-react";
+import { AlertCircle, CheckCircle2, Files, Pin, Plus, Search } from "lucide-react";
 import NoteEditor from "./NoteEditor";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import SelectField from "@/components/ui/SelectField";
 
-const filters = [
-  { name: "All notes", icon: Files }, { name: "Pinned", icon: Pin },
-  { name: "Personal", icon: FolderClosed }, { name: "Work", icon: FolderClosed },
-  { name: "School", icon: FolderClosed }, { name: "Archive", icon: Archive },
-];
+const filters = ["All notes", "Pinned", "Personal", "Work", "School", "Archive"];
 
 const plainText = (content = "") => content.replace(/<br\s*\/?>/gi, "\n").replace(/<\/div>|<\/p>|<\/li>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 
@@ -78,11 +75,16 @@ const NotesPage = () => {
       </div>
 
       <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <nav className="grid grid-cols-2 gap-1 sm:grid-cols-3 xl:flex">
-            {filters.map((filter) => { const Icon = filter.icon; const active = activeFilter === filter.name; return <button key={filter.name} onClick={() => setActiveFilter(filter.name)} className={`flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2 text-sm transition xl:justify-start xl:px-3 ${active ? "bg-slate-900 font-semibold text-white" : "font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}><Icon size={15} /><span>{filter.name}</span><span className={`text-[10px] ${active ? "text-slate-300" : "text-slate-400"}`}>{noteCount(filter.name)}</span></button>; })}
-          </nav>
-          <label className="relative block w-full xl:w-72"><span className="sr-only">Search notes</span><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes" className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-[#74aeb7] focus:bg-white" /></label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full sm:w-56">
+            <SelectField
+              value={activeFilter}
+              onValueChange={setActiveFilter}
+              options={filters.map((filter) => ({ value: filter, label: `${filter} (${noteCount(filter)})` }))}
+              ariaLabel="Filter notes"
+            />
+          </div>
+          <label className="relative block w-full sm:max-w-sm"><span className="sr-only">Search notes</span><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes" className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none transition focus:border-[#74aeb7] focus:bg-white focus:ring-2 focus:ring-[#dceff1]" /></label>
         </div>
       </section>
 
@@ -90,7 +92,7 @@ const NotesPage = () => {
 
       {visibleNotes.length ? <section className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleNotes.map((note) => (
         <article key={note.id} onClick={() => { setSelectedId(note.id); setConfirmDelete(false); }} className="group flex min-h-56 cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#b9dadd] hover:shadow-md">
-          <div className="flex items-start justify-between gap-4"><div className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-600"><Files size={17} /></div>{note.pinned && <Pin size={15} className="fill-[#167d8d] text-[#167d8d]" />}</div>
+          <div className="flex items-start justify-between gap-4"><div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><Files size={17} /></div>{note.pinned && <Pin size={15} className="fill-[#167d8d] text-[#167d8d]" />}</div>
           <h3 className="note-card-title mt-4 truncate font-bold text-slate-900" dangerouslySetInnerHTML={{ __html: note.title || "Untitled note" }} />
           <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-500">{plainText(note.content) || "Empty note. Open it to start writing."}</p>
           <div className="mt-auto flex items-center justify-between pt-5"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">{note.tag}</span><span className="text-xs text-slate-400">{note.updatedAt}</span></div>

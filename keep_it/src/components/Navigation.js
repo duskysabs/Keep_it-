@@ -27,21 +27,21 @@ const Navigation = () => {
 
   const linkClass = (path) => {
     const isActive = pathname === path;
-    return `flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-sm transition lg:justify-start lg:gap-3 lg:px-3 ${isActive ? "bg-slate-900 font-semibold text-white shadow-sm" : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`;
+    return `flex min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-sm transition lg:justify-start lg:gap-3 lg:px-3 ${isActive ? "bg-slate-900 font-semibold text-white" : "font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-950"}`;
   };
 
   return (
-    <aside className="border-b border-slate-200 bg-white px-4 py-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:flex-col lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+    <aside className="border-b border-slate-200 bg-white px-4 py-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-60 lg:flex-col lg:border-b-0 lg:border-r lg:px-4 lg:py-5">
       <div className="flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-slate-950">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#167d8d] text-sm text-white shadow-sm">K</span>
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm text-white">K</span>
           Keep_it!
         </Link>
         <span className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 lg:hidden">Personal</span>
       </div>
 
       <div className="mt-8 hidden items-center gap-3 border-b border-slate-100 pb-6 lg:flex">
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-[#e4f2f4] font-bold text-[#116b78]">{profileName.charAt(0).toUpperCase()}</div>
+        <div className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-600">{profileName.charAt(0).toUpperCase()}</div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">{profileName}</p>
           <p className="truncate text-xs text-slate-500">Personal workspace</p>
