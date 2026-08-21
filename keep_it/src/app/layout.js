@@ -28,7 +28,7 @@ const RootLayout = ({ children }) => {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head><script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem('keepit-theme')||'system';const d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d)}catch{}` }} /></head>
-      <body className="min-h-full bg-[#f5f7f8] text-slate-950">
+      <body className="min-h-full text-slate-950">
         <WorkspaceProvider>
         <TaskProvider>
           <div className="min-h-screen lg:flex">

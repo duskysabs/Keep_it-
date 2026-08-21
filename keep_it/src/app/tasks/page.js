@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CalendarDays, Check, Circle, Plus, Search, Trash2, X } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
+import SelectField from "@/components/ui/SelectField";
 import { relativeDate, useTasks } from "@/context/TaskContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
@@ -148,9 +149,7 @@ const TasksPage = () => {
 
       <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <nav className="flex gap-1 overflow-x-auto">
-            {["All", "Active", "Completed"].map((item) => <button key={item} onClick={() => setFilter(item)} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${filter === item ? "bg-slate-900 font-semibold text-white" : "font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}><span>{item}</span><span className={`text-[10px] ${filter === item ? "text-slate-300" : "text-slate-400"}`}>{counts[item]}</span></button>)}
-          </nav>
+          <SelectField value={filter} onValueChange={setFilter} options={["All", "Active", "Completed"].map((item) => ({ value: item, label: `${item} (${counts[item]})` }))} ariaLabel="Filter tasks" compact className="w-full lg:w-48" />
           <label className="relative block w-full lg:w-72"><span className="sr-only">Search tasks</span><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-[#74aeb7] focus:bg-white" /></label>
         </div>
       </section>

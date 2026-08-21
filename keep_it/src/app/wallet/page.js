@@ -137,8 +137,8 @@ const WalletPage = () => {
       <section className="mt-7">
         <div className="flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">My wallets</h3><p className="text-xs text-slate-400">{wallets.length} accounts</p></div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <button onClick={() => setSelectedWalletId("all")} className={`rounded-2xl border p-5 text-left transition ${selectedWalletId === "all" ? "border-slate-900 bg-slate-900 text-white shadow-md" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-            <div className="flex items-center justify-between"><span className={`grid h-9 w-9 place-items-center rounded-xl ${selectedWalletId === "all" ? "bg-white/10" : "bg-slate-100 text-slate-600"}`}><WalletCards size={18} /></span><span className={`text-[10px] font-bold uppercase tracking-wider ${selectedWalletId === "all" ? "text-slate-300" : "text-slate-400"}`}>Combined</span></div>
+          <button onClick={() => setSelectedWalletId("all")} className={`rounded-2xl border p-5 text-left transition ${selectedWalletId === "all" ? "border-[#74aeb7] bg-[#edf7f8] text-slate-900 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+            <div className="flex items-center justify-between"><span className={`grid h-9 w-9 place-items-center rounded-xl ${selectedWalletId === "all" ? "bg-white text-[#167d8d]" : "bg-slate-100 text-slate-600"}`}><WalletCards size={18} /></span><span className={`text-[10px] font-bold uppercase tracking-wider ${selectedWalletId === "all" ? "text-[#167d8d]" : "text-slate-400"}`}>Combined</span></div>
             <p className="mt-5 text-sm font-semibold">All wallets</p><p className="mt-1 text-2xl font-bold">{peso.format(wallets.reduce((total, wallet) => total + balanceFor(wallet.id), 0))}</p>
           </button>
           {wallets.map((wallet) => {
@@ -146,11 +146,11 @@ const WalletPage = () => {
             const selected = selectedWalletId === wallet.id;
             return (
               <div key={wallet.id} className="relative">
-              <button onClick={() => setSelectedWalletId(wallet.id)} aria-label={`Filter transactions by ${wallet.name}`} className={`h-full w-full rounded-2xl border p-5 text-left transition ${selected ? "border-[#167d8d] bg-[#167d8d] text-white shadow-md" : "border-slate-200 bg-white hover:border-[#b9dadd]"}`}>
-                <div className="flex items-center justify-between"><span className={`grid h-9 w-9 place-items-center rounded-xl ${selected ? "bg-white/10" : "bg-[#e3f2f4] text-[#167d8d]"}`}><Icon size={18} /></span><span className={`text-[10px] font-bold uppercase tracking-wider ${selected ? "text-white/70" : "text-slate-400"}`}>{wallet.type}</span></div>
+              <button onClick={() => setSelectedWalletId(wallet.id)} aria-label={`Filter transactions by ${wallet.name}`} className={`h-full w-full rounded-2xl border p-5 text-left transition ${selected ? "border-[#74aeb7] bg-[#edf7f8] text-slate-900 shadow-sm" : "border-slate-200 bg-white hover:border-[#b9dadd]"}`}>
+                <div className="flex items-center justify-between"><span className={`grid h-9 w-9 place-items-center rounded-xl ${selected ? "bg-white text-[#167d8d]" : "bg-[#e3f2f4] text-[#167d8d]"}`}><Icon size={18} /></span><span className={`text-[10px] font-bold uppercase tracking-wider ${selected ? "text-[#167d8d]" : "text-slate-400"}`}>{wallet.type}</span></div>
                 <p className="mt-5 truncate text-sm font-semibold">{wallet.name}</p><p className="mt-1 pr-8 text-2xl font-bold">{peso.format(balanceFor(wallet.id))}</p>
               </button>
-              <button type="button" onClick={() => openWallet(wallet)} aria-label={`Edit ${wallet.name}`} title={`Edit ${wallet.name}`} className={`absolute bottom-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg transition ${selected ? "text-white/70 hover:bg-white/10 hover:text-white" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"}`}><Pencil size={14} /></button>
+              <button type="button" onClick={() => openWallet(wallet)} aria-label={`Edit ${wallet.name}`} title={`Edit ${wallet.name}`} className="absolute bottom-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><Pencil size={14} /></button>
               </div>
             );
           })}
@@ -159,7 +159,7 @@ const WalletPage = () => {
 
       <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-100 p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div><h3 className="font-bold text-slate-900">Recent transactions</h3><p className="mt-1 text-xs text-slate-400">{selectedWalletId === "all" ? "Activity across all wallets" : `Activity for ${walletName(selectedWalletId)}`}</p></div><span className="text-xs font-semibold text-slate-400">{filteredTransactions.length} entries</span></div><div className="mt-4 flex flex-col gap-2 lg:flex-row"><label className="relative flex-1"><span className="sr-only">Search transactions</span><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search transactions" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-[#74aeb7] focus:bg-white" /></label><div className="grid grid-cols-4 rounded-xl bg-slate-100 p-1">{["all", "income", "expense", "transfer"].map((type) => <button key={type} onClick={() => setTypeFilter(type)} className={`rounded-lg px-2 py-2 text-xs font-semibold capitalize ${typeFilter === type ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}>{type === "expense" ? "Expenses" : type}</button>)}</div></div></div>
-        <ScrollArea className="h-[min(520px,60vh)]">
+        <ScrollArea className="h-[clamp(18rem,50dvh,30rem)] sm:h-[clamp(20rem,52dvh,32rem)]">
         <div className="divide-y divide-slate-100">
           {filteredTransactions.map((transaction) => {
             const isIncome = transaction.type === "income";

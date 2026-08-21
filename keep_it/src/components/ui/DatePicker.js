@@ -35,7 +35,7 @@ const DatePicker = ({ value, onChange }) => {
       </div>
 
       <Popover.Portal>
-        <Popover.Content sideOffset={8} align="start" collisionPadding={12} className="z-[90] rounded-xl border border-slate-200 bg-white p-3 shadow-xl outline-none">
+        <Popover.Content onEscapeKeyDown={(event) => event.stopPropagation()} sideOffset={8} align="start" collisionPadding={12} className="z-[90] rounded-xl border border-slate-200 bg-white p-3 shadow-xl outline-none">
           <DayPicker
             mode="single"
             animate

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, AlertTriangle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Plus, Search, Trash2, X } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
+import SelectField from "@/components/ui/SelectField";
 import { relativeDate, toISODate, useTasks } from "@/context/TaskContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
@@ -149,10 +150,12 @@ const CalendarPage = () => {
     <main className="mx-auto max-w-[1400px] p-4 sm:p-5 lg:p-8">
       <div className="relative flex flex-col gap-4">
         <div><h2 className="text-2xl font-bold text-slate-950">Calendar</h2><p className="mt-1 text-sm text-slate-500">See every dated task across your schedule.</p></div>
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
-          <label className="relative block sm:col-span-2 xl:w-56"><span className="sr-only">Search calendar tasks</span><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#74aeb7]" /></label>
-          <div className="grid grid-cols-3 rounded-xl bg-slate-200/70 p-1">{["Week", "Month", "Year"].map((item) => <button key={item} onClick={() => setView(item)} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${view === item ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}>{item}</button>)}</div>
-          <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1"><button onClick={() => move(-1)} aria-label={`Previous ${view.toLowerCase()}`} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"><ChevronLeft size={17} /></button><button onClick={() => setCursor(new Date())} aria-label="Jump to current date" title="Jump to current date" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">Today</button><button onClick={() => move(1)} aria-label={`Next ${view.toLowerCase()}`} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"><ChevronRight size={17} /></button></div>
+        <div className="grid w-full gap-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center">
+          <label className="relative block xl:w-56"><span className="sr-only">Search calendar tasks</span><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#74aeb7]" /></label>
+          <div className="grid w-fit max-w-full grid-cols-[minmax(0,9rem)_auto] items-center gap-2">
+            <SelectField value={view} onValueChange={setView} options={["Week", "Month", "Year"]} ariaLabel="Calendar view" compact className="w-36 max-w-full" />
+            <div className="flex items-center gap-1"><button onClick={() => move(-1)} aria-label={`Previous ${view.toLowerCase()}`} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"><ChevronLeft size={17} /></button><button onClick={() => move(1)} aria-label={`Next ${view.toLowerCase()}`} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"><ChevronRight size={17} /></button></div>
+          </div>
           <button onClick={() => openAddForDate()} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700 sm:col-span-2 lg:absolute lg:right-0 lg:top-0 lg:w-auto xl:col-span-1"><Plus size={16} /> Add task</button>
         </div>
       </div>

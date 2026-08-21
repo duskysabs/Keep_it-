@@ -54,20 +54,20 @@ const Navigation = () => {
         {navigationItems.map((item) => {
           const Icon = item.icon;
           return (
-            <Link key={item.path} href={item.path} className={linkClass(item.path)}>
+            <Link key={item.path} href={item.path} aria-current={pathname === item.path ? "page" : undefined} className={linkClass(item.path)}>
               <Icon size={17} strokeWidth={2} />
               <span>{item.name}</span>
             </Link>
           );
         })}
-        <Link href="/settings" className={`${linkClass("/settings")} lg:hidden`}>
+        <Link href="/settings" aria-current={pathname === "/settings" ? "page" : undefined} className={`${linkClass("/settings")} lg:hidden`}>
           <Settings size={17} />
           <span>Settings</span>
         </Link>
       </nav>
 
       <div className="mt-auto hidden border-t border-slate-100 pt-4 lg:block">
-        <Link href="/settings" className={linkClass("/settings")}>
+        <Link href="/settings" aria-current={pathname === "/settings" ? "page" : undefined} className={linkClass("/settings")}>
           <Settings size={17} />
           <span>Settings</span>
         </Link>
