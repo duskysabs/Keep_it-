@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CalendarDays, Check, Circle, Plus, Search, Trash2, X } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
+import SelectField from "@/components/ui/SelectField";
 import { relativeDate, useTasks } from "@/context/TaskContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
@@ -21,7 +22,7 @@ const taskTiming = (task) => {
 };
 
 const TasksPage = () => {
-  const { tasks, setTasks } = useTasks();
+  const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTasks();
   const { recordActivity } = useWorkspace();
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -110,31 +111,31 @@ const TasksPage = () => {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [showForm, confirmDelete]);
 
-  const saveTask = (event) => {
+  const saveTask = async (event) => {
     event.preventDefault();
     if (!title.trim()) {
       setTitleError("Enter a task title before saving.");
       return;
     }
     if (editingId) {
-      setTasks((current) => current.map((task) => task.id === editingId ? { id: task.id, title: title.trim(), due, done } : task));
+      await updateTask(editingId, { title: title.trim(), due, done });
       recordActivity("task", "Updated a task", title.trim());
     } else {
-      setTasks((current) => [{ id: crypto.randomUUID(), title: title.trim(), due, done: false }, ...current]);
+      await addTask({ title: title.trim(), due });
       recordActivity("task", "Added a task", title.trim());
     }
     closeForm();
   };
 
-  const toggleTask = (id) => {
+  const handleToggleTask = async (id) => {
     const selectedTask = tasks.find((task) => task.id === id);
+    await toggleTask(id);
     if (selectedTask) recordActivity("task", selectedTask.done ? "Reopened a task" : "Completed a task", selectedTask.title);
-    setTasks((current) => current.map((task) => task.id === id ? { ...task, done: !task.done } : task));
   };
 
-  const deleteTask = () => {
+  const handleDeleteTask = async () => {
+    await deleteTask(editingId);
     recordActivity("task", "Deleted a task", title);
-    setTasks((current) => current.filter((task) => task.id !== editingId));
     setConfirmDelete(false);
     closeForm();
   };
@@ -148,9 +149,7 @@ const TasksPage = () => {
 
       <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <nav className="flex gap-1 overflow-x-auto">
-            {["All", "Active", "Completed"].map((item) => <button key={item} onClick={() => setFilter(item)} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${filter === item ? "bg-slate-900 font-semibold text-white" : "font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}><span>{item}</span><span className={`text-[10px] ${filter === item ? "text-slate-300" : "text-slate-400"}`}>{counts[item]}</span></button>)}
-          </nav>
+          <SelectField value={filter} onValueChange={setFilter} options={["All", "Active", "Completed"].map((item) => ({ value: item, label: `${item} (${counts[item]})` }))} ariaLabel="Filter tasks" compact className="w-full lg:w-48" />
           <label className="relative block w-full lg:w-72"><span className="sr-only">Search tasks</span><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks" className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-[#74aeb7] focus:bg-white" /></label>
         </div>
       </section>
@@ -161,7 +160,7 @@ const TasksPage = () => {
         {visibleTasks.map((task) => {
           const timing = taskTiming(task);
           return <article key={task.id} role="button" tabIndex={0} onClick={() => openTask(task)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTask(task); } }} className="group flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#b9dadd] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#74aeb7]">
-            <button onClick={(event) => { event.stopPropagation(); toggleTask(task.id); }} aria-label={task.done ? "Mark task active" : "Complete task"} className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border transition ${task.done ? "border-[#167d8d] bg-[#167d8d] text-white" : "border-slate-300 text-transparent hover:border-[#167d8d]"}`}>{task.done ? <Check size={14} /> : <Circle size={12} />}</button>
+            <button onClick={(event) => { event.stopPropagation(); handleToggleTask(task.id); }} aria-label={task.done ? "Mark task active" : "Complete task"} className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border transition ${task.done ? "border-[#167d8d] bg-[#167d8d] text-white" : "border-slate-300 text-transparent hover:border-[#167d8d]"}`}>{task.done ? <Check size={14} /> : <Circle size={12} />}</button>
             <div className="min-w-0 flex-1"><p className={`truncate text-sm font-semibold ${task.done ? "text-slate-400 line-through" : "text-slate-800"}`}>{task.title}</p><div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-400"><span className={`flex items-center gap-1 ${timing === "overdue" ? "font-semibold text-rose-600" : timing === "today" ? "font-semibold text-amber-600" : ""}`}><CalendarDays size={12} />{timing === "overdue" ? `Overdue · ${dateLabel(task.due)}` : dateLabel(task.due)}</span></div></div>
           </article>;
         })}
@@ -182,7 +181,7 @@ const TasksPage = () => {
         </form>
       </div>}
 
-      {confirmDelete && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-4" onMouseDown={() => setConfirmDelete(false)} onKeyDown={(event) => { if (event.key === "Escape") setConfirmDelete(false); }}><div role="alertdialog" aria-modal="true" aria-labelledby="delete-task-title" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"><div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-50 text-rose-600"><AlertCircle size={18} /></div><h3 id="delete-task-title" className="mt-4 font-bold text-slate-950">Delete “{title}”?</h3><p className="mt-2 text-sm leading-6 text-slate-500">This task will be permanently removed. This cannot be undone.</p><div className="mt-5 flex justify-end gap-2"><button onClick={() => setConfirmDelete(false)} autoFocus className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100">Keep task</button><button onClick={deleteTask} className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Delete</button></div></div></div>}
+      {confirmDelete && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-4" onMouseDown={() => setConfirmDelete(false)} onKeyDown={(event) => { if (event.key === "Escape") setConfirmDelete(false); }}><div role="alertdialog" aria-modal="true" aria-labelledby="delete-task-title" onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"><div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-50 text-rose-600"><AlertCircle size={18} /></div><h3 id="delete-task-title" className="mt-4 font-bold text-slate-950">Delete “{title}”?</h3><p className="mt-2 text-sm leading-6 text-slate-500">This task will be permanently removed. This cannot be undone.</p><div className="mt-5 flex justify-end gap-2"><button onClick={() => setConfirmDelete(false)} autoFocus className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100">Keep task</button><button onClick={handleDeleteTask} className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Delete</button></div></div></div>}
     </main>
   );
 };

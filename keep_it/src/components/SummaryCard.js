@@ -1,8 +1,8 @@
 const SummaryCard = ({ title, value, detail, icon: Icon, accent = "teal" }) => {
   const accents = {
-    teal: "bg-[#e3f2f4] text-[#167d8d]",
+    teal: "bg-slate-100 text-slate-600",
     amber: "bg-amber-50 text-amber-600",
-    blue: "bg-blue-50 text-blue-600",
+    blue: "bg-slate-100 text-slate-600",
   };
 
   return (
