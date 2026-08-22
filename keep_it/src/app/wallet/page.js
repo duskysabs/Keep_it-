@@ -5,6 +5,7 @@ import { AlertCircle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Banknote, Bui
 import DatePicker from "@/components/ui/DatePicker";
 import ScrollArea from "@/components/ui/ScrollArea";
 import SelectField from "@/components/ui/SelectField";
+import { useWallets } from "@/context/WalletContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
 const walletTypes = ["Cash", "E-wallet", "Bank", "Debit card"];
@@ -12,7 +13,8 @@ const categories = ["Salary", "Food", "Transportation", "Utilities", "Shopping",
 const peso = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 });
 
 const WalletPage = () => {
-  const { wallets, setWallets, transactions, setTransactions, recordActivity } = useWorkspace();
+  const { recordActivity } = useWorkspace();
+  const { wallets, transactions, error: walletError, addWallet, updateWallet, deleteWallet, addTransaction, updateTransaction, deleteTransaction } = useWallets();
   const [selectedWalletId, setSelectedWalletId] = useState("all");
   const [dialog, setDialog] = useState("");
   const [walletForm, setWalletForm] = useState({ name: "", type: "E-wallet", startingBalance: "" });
@@ -67,35 +69,49 @@ const WalletPage = () => {
   const openNewWallet = () => { setEditingWalletId(""); setWalletForm({ name: "", type: "E-wallet", startingBalance: "" }); setFormError(""); setDialog("wallet"); };
   const openWallet = (wallet) => { setSelectedWalletId(wallet.id); setEditingWalletId(wallet.id); setWalletForm({ ...wallet, startingBalance: String(wallet.startingBalance) }); setFormError(""); setDialog("wallet"); };
 
-  const saveWallet = (event) => {
+  const saveWallet = async (event) => {
     event.preventDefault();
     if (!walletForm.name.trim()) return setFormError("Enter a wallet name.");
     if (walletForm.startingBalance === "" || Number.isNaN(Number(walletForm.startingBalance))) return setFormError("Enter a valid starting balance.");
     const values = { name: walletForm.name.trim(), type: walletForm.type, startingBalance: Number(walletForm.startingBalance) };
-    if (editingWalletId) { setWallets((current) => current.map((wallet) => wallet.id === editingWalletId ? { ...wallet, ...values } : wallet)); recordActivity("wallet", "Updated a wallet", values.name); }
-    else {
-      const id = crypto.randomUUID();
-      setWallets((current) => [...current, { id, ...values }]);
-      recordActivity("wallet", "Added a wallet", values.name);
-      setSelectedWalletId(id);
-      setTransactionForm({ ...transactionForm, walletId: id });
+    try {
+      if (editingWalletId) {
+        await updateWallet(editingWalletId, values);
+        recordActivity("wallet", "Updated a wallet", values.name);
+      } else {
+        const created = await addWallet(values);
+        recordActivity("wallet", "Added a wallet", values.name);
+        setSelectedWalletId(created.id);
+        setTransactionForm((current) => ({ ...current, walletId: created.id }));
+      }
+      setFormError("");
+      setDialog("");
+    } catch (saveError) {
+      setFormError(saveError instanceof Error ? saveError.message : "The wallet could not be saved.");
     }
-    setFormError("");
-    setDialog("");
   };
 
-  const saveTransaction = (event) => {
+  const saveTransaction = async (event) => {
     event.preventDefault();
     const amount = Number(transactionForm.amount);
     if (!transactionForm.walletId) return setFormError("Choose a wallet.");
     if (!amount || amount <= 0) return setFormError("Enter an amount greater than zero.");
     if (!transactionForm.date) return setFormError("Choose a transaction date.");
     if (transactionForm.type === "transfer" && (!transactionForm.targetWalletId || transactionForm.targetWalletId === transactionForm.walletId)) return setFormError("Choose two different wallets for a transfer.");
-    const values = { ...transactionForm, amount, category: transactionForm.type === "transfer" ? "Transfer" : transactionForm.category, payee: transactionForm.payee.trim() || (transactionForm.type === "transfer" ? "Account transfer" : "Untitled transaction") };
-    if (editingTransactionId) { setTransactions((current) => current.map((item) => item.id === editingTransactionId ? { ...item, ...values } : item)); recordActivity("transaction", "Updated a transaction", values.payee); }
-    else { setTransactions((current) => [{ id: crypto.randomUUID(), ...values }, ...current]); recordActivity("transaction", `Added an ${values.type}`, values.payee); }
-    setFormError("");
-    setDialog("");
+    const values = { ...transactionForm, targetWalletId: transactionForm.type === "transfer" ? transactionForm.targetWalletId : "", amount, category: transactionForm.type === "transfer" ? "Transfer" : transactionForm.category, payee: transactionForm.payee.trim() || (transactionForm.type === "transfer" ? "Account transfer" : "Untitled transaction") };
+    try {
+      if (editingTransactionId) {
+        await updateTransaction(editingTransactionId, values);
+        recordActivity("transaction", "Updated a transaction", values.payee);
+      } else {
+        await addTransaction(values);
+        recordActivity("transaction", `Added an ${values.type}`, values.payee);
+      }
+      setFormError("");
+      setDialog("");
+    } catch (saveError) {
+      setFormError(saveError instanceof Error ? saveError.message : "The transaction could not be saved.");
+    }
   };
 
   const openTransactionDialog = () => {
@@ -112,20 +128,30 @@ const WalletPage = () => {
   const confirmationId = confirmation?.id;
   const confirmationType = confirmation?.type;
 
-  const deleteConfirmed = () => {
+  const deleteConfirmed = async () => {
     if (!confirmationId) return;
-    if (confirmationType === "wallet") {
-      recordActivity("wallet", "Deleted a wallet", wallets.find((wallet) => wallet.id === confirmationId)?.name || "Wallet");
-      setWallets((current) => current.filter((wallet) => wallet.id !== confirmationId));
-      setTransactions((current) => current.filter((item) => item.walletId !== confirmationId && item.targetWalletId !== confirmationId));
-      setSelectedWalletId("all");
-    } else { recordActivity("transaction", "Deleted a transaction", transactions.find((item) => item.id === confirmationId)?.payee || "Transaction"); setTransactions((current) => current.filter((item) => item.id !== confirmationId)); }
-    setConfirmation(null);
-    setDialog("");
+    try {
+      if (confirmationType === "wallet") {
+        const name = wallets.find((wallet) => wallet.id === confirmationId)?.name || "Wallet";
+        await deleteWallet(confirmationId);
+        recordActivity("wallet", "Deleted a wallet", name);
+        setSelectedWalletId("all");
+      } else {
+        const payee = transactions.find((item) => item.id === confirmationId)?.payee || "Transaction";
+        await deleteTransaction(confirmationId);
+        recordActivity("transaction", "Deleted a transaction", payee);
+      }
+      setConfirmation(null);
+      setDialog("");
+    } catch (deleteError) {
+      setConfirmation(null);
+      setFormError(deleteError instanceof Error ? deleteError.message : "The item could not be deleted.");
+    }
   };
 
   return (
     <main className="mx-auto max-w-[1400px] p-4 sm:p-5 lg:p-8">
+      {walletError && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{walletError}</p>}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><h2 className="text-2xl font-bold text-slate-950">Your wallet</h2><p className="mt-1 text-sm text-slate-500">Track every account and transaction in one clear view.</p></div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
@@ -137,6 +163,7 @@ const WalletPage = () => {
       <section className="mt-7">
         <div className="flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">My wallets</h3><p className="text-xs text-slate-400">{wallets.length} accounts</p></div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {wallets.length > 0 ? <>
           <button onClick={() => setSelectedWalletId("all")} className={`rounded-2xl border p-5 text-left transition ${selectedWalletId === "all" ? "border-[#74aeb7] bg-[#edf7f8] text-slate-900 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}>
             <div className="flex items-center justify-between"><span className={`grid h-9 w-9 place-items-center rounded-xl ${selectedWalletId === "all" ? "bg-white text-[#167d8d]" : "bg-slate-100 text-slate-600"}`}><WalletCards size={18} /></span><span className={`text-[10px] font-bold uppercase tracking-wider ${selectedWalletId === "all" ? "text-[#167d8d]" : "text-slate-400"}`}>Combined</span></div>
             <p className="mt-5 text-sm font-semibold">All wallets</p><p className="mt-1 text-2xl font-bold">{peso.format(wallets.reduce((total, wallet) => total + balanceFor(wallet.id), 0))}</p>
@@ -153,7 +180,7 @@ const WalletPage = () => {
               <button type="button" onClick={() => openWallet(wallet)} aria-label={`Edit ${wallet.name}`} title={`Edit ${wallet.name}`} className="absolute bottom-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"><Pencil size={14} /></button>
               </div>
             );
-          })}
+          })}</> : <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center sm:col-span-2 xl:col-span-4"><WalletCards className="mx-auto text-slate-300" /><p className="mt-3 font-semibold text-slate-700">No wallets yet</p><p className="mt-1 text-sm text-slate-400">Add your first account before recording transactions.</p><button onClick={openNewWallet} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> Add wallet</button></div>}
         </div>
       </section>
 

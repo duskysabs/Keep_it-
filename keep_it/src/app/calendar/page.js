@@ -124,20 +124,20 @@ const CalendarPage = () => {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [showForm, confirmDelete, selectedDate]);
 
-  const saveTask = (event) => {
+  const saveTask = async (event) => {
     event.preventDefault();
     if (!title.trim()) {
       setTitleError("Enter a task title before saving.");
       return;
     }
-    if (editingId) { updateTask(editingId, { title: title.trim(), due, done }); recordActivity("task", "Updated a task", title.trim()); }
-    else { addTask({ title: title.trim(), due }); recordActivity("task", "Added a task", title.trim()); }
+    if (editingId) { await updateTask(editingId, { title: title.trim(), due, done }); recordActivity("task", "Updated a task", title.trim()); }
+    else { await addTask({ title: title.trim(), due }); recordActivity("task", "Added a task", title.trim()); }
     setShowForm(false);
   };
 
-  const removeTask = () => {
+  const removeTask = async () => {
+    await deleteTask(editingId);
     recordActivity("task", "Deleted a task", title);
-    deleteTask(editingId);
     setConfirmDelete(false);
     setShowForm(false);
     setEditingId("");

@@ -5,12 +5,15 @@ import Link from "next/link";
 import { AlertCircle, CheckCircle2, Copy, Eye, EyeOff, KeyRound, LockKeyhole, Pencil, Plus, Search, Trash2, UserRound, WandSparkles, X, XCircle } from "lucide-react";
 import ScrollArea from "@/components/ui/ScrollArea";
 import SelectField from "@/components/ui/SelectField";
+import VaultAccessDialog from "@/components/VaultAccessDialog";
+import { useVault } from "@/context/VaultContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
 const emptyForm = { name: "", username: "", password: "", url: "", notes: "" };
 
 const VaultPage = () => {
-  const { credentials, setCredentials, recordActivity } = useWorkspace();
+  const { recordActivity } = useWorkspace();
+  const { credentials, status, isLoading, error: vaultError, setupVault, unlockVault, addCredential, updateCredential, deleteCredential: removeCredential } = useVault();
   const [visible, setVisible] = useState([]);
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState("");
@@ -23,6 +26,23 @@ const VaultPage = () => {
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [generator, setGenerator] = useState({ length: 18, uppercase: true, lowercase: true, numbers: true, symbols: true });
+  const [accessMode, setAccessMode] = useState("");
+  const [setupSkipped, setSetupSkipped] = useState(false);
+  const [pendingNewCredential, setPendingNewCredential] = useState(false);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!status.configured) setAccessMode(setupSkipped ? "" : "setup");
+    else if (!status.unlocked) {
+      setAccessMode("unlock");
+      setShowForm(false);
+      setConfirmation("");
+      setVisible([]);
+      setForm(emptyForm);
+      setOriginalForm(emptyForm);
+    }
+    else setAccessMode("");
+  }, [isLoading, setupSkipped, status.configured, status.unlocked]);
 
   useEffect(() => {
     if (!showForm && !confirmation) return;
@@ -32,9 +52,9 @@ const VaultPage = () => {
   }, [showForm, confirmation]);
 
   const protectionChecks = [
-    { label: "Master password configured", complete: true },
-    { label: "Auto-lock enabled", complete: true },
-    { label: "Encrypted backup created", complete: false },
+    { label: "Master password configured", complete: status.configured },
+    { label: "Auto-lock enabled", complete: status.settings.autoLockMinutes > 0 },
+    { label: "Encrypted backup created", complete: Boolean(status.settings.backupCreatedAt) },
   ];
   const protectionScore = protectionChecks.filter((check) => check.complete).length;
   const protectionStatus = protectionScore === 3 ? "Healthy" : protectionScore === 2 ? "Needs attention" : "At risk";
@@ -48,11 +68,19 @@ const VaultPage = () => {
   const toggleVisible = (id) => setVisible(visible.includes(id) ? visible.filter((item) => item !== id) : [...visible, id]);
 
   const copyValue = async (credential, field) => {
-    await navigator.clipboard.writeText(credential[field]);
+    const copiedValue = credential[field];
+    await navigator.clipboard.writeText(copiedValue);
     const copyId = `${credential.id}-${field}`;
     setCopied(copyId);
     showToast(field === "password" ? "Password copied" : "Username copied");
     setTimeout(() => setCopied(""), 1200);
+    if (field === "password" && status.settings.clearClipboardSeconds > 0) {
+      setTimeout(async () => {
+        try {
+          if (await navigator.clipboard.readText() === copiedValue) await navigator.clipboard.writeText("");
+        } catch { /* Clipboard access may be unavailable after the window loses focus. */ }
+      }, status.settings.clearClipboardSeconds * 1000);
+    }
   };
 
   const updateForm = (field, value) => {
@@ -107,30 +135,60 @@ const VaultPage = () => {
 
   const requestClose = () => formIsDirty ? setConfirmation("discard") : closeForm();
 
-  const saveCredential = (event) => {
+  const saveCredential = async (event) => {
     event.preventDefault();
     if (!validateForm()) return;
     const cleanedForm = { ...form, name: form.name.trim(), username: form.username.trim(), url: form.url.trim(), notes: form.notes.trim() };
 
-    if (editingId) {
-      setCredentials(credentials.map((credential) => credential.id === editingId ? { ...credential, ...cleanedForm } : credential));
-      recordActivity("credential", "Updated a credential", cleanedForm.name);
-      showToast("Credential updated");
-    } else {
-      setCredentials([{ id: crypto.randomUUID(), ...cleanedForm, color: "bg-[#167d8d]" }, ...credentials]);
-      recordActivity("credential", "Added a credential", cleanedForm.name);
-      showToast("Credential added");
+    try {
+      if (editingId) {
+        await updateCredential(editingId, cleanedForm);
+        recordActivity("credential", "Updated a credential", cleanedForm.name);
+        showToast("Credential updated");
+      } else {
+        await addCredential(cleanedForm);
+        recordActivity("credential", "Added a credential", cleanedForm.name);
+        showToast("Credential added");
+      }
+      closeForm();
+    } catch (saveError) {
+      setErrors((current) => ({ ...current, form: saveError instanceof Error ? saveError.message : "The credential could not be saved." }));
     }
-    closeForm();
   };
 
   const openNewCredential = () => {
+    if (!status.configured) {
+      setPendingNewCredential(true);
+      setAccessMode("setup");
+      return;
+    }
     setEditingId("");
     setForm(emptyForm);
     setOriginalForm(emptyForm);
     setErrors({});
     setShowFormPassword(false);
     setShowForm(true);
+  };
+
+  const submitAccess = async (value) => {
+    if (accessMode === "setup") await setupVault(value);
+    else await unlockVault(value);
+    setAccessMode("");
+    if (pendingNewCredential) {
+      setPendingNewCredential(false);
+      setEditingId("");
+      setForm(emptyForm);
+      setOriginalForm(emptyForm);
+      setErrors({});
+      setShowFormPassword(false);
+      setShowForm(true);
+    }
+  };
+
+  const closeAccess = () => {
+    if (accessMode === "setup") setSetupSkipped(true);
+    setPendingNewCredential(false);
+    setAccessMode("");
   };
 
   const openCredential = (credential) => {
@@ -143,12 +201,17 @@ const VaultPage = () => {
     setShowForm(true);
   };
 
-  const deleteCredential = () => {
-    recordActivity("credential", "Deleted a credential", form.name);
-    setCredentials(credentials.filter((credential) => credential.id !== editingId));
-    setVisible(visible.filter((id) => id !== editingId));
-    closeForm();
-    showToast("Credential deleted");
+  const deleteCredential = async () => {
+    try {
+      await removeCredential(editingId);
+      recordActivity("credential", "Deleted a credential", form.name);
+      setVisible(visible.filter((id) => id !== editingId));
+      closeForm();
+      showToast("Credential deleted");
+    } catch (deleteError) {
+      setErrors((current) => ({ ...current, form: deleteError instanceof Error ? deleteError.message : "The credential could not be deleted." }));
+      setConfirmation("");
+    }
   };
 
   const filtered = credentials.filter((item) => `${item.name} ${item.username} ${item.url} ${item.notes}`.toLowerCase().includes(search.toLowerCase()));
@@ -156,6 +219,8 @@ const VaultPage = () => {
   return (
     <main className="mx-auto max-w-[1400px] p-4 sm:p-5 lg:p-8">
       {toast && <div role="status" className="fixed right-5 top-5 z-[70] flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl"><CheckCircle2 size={16} className="text-emerald-400" />{toast}</div>}
+      {vaultError && status.unlocked && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{vaultError}</p>}
+      {accessMode && <VaultAccessDialog mode={accessMode} onSubmit={submitAccess} onClose={accessMode === "setup" ? closeAccess : undefined} secondaryLabel="Skip for now" externalError={vaultError} />}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><h2 className="text-2xl font-bold text-slate-950">Your vault</h2><p className="mt-1 text-sm text-slate-500">Track all of your accounts and passwords.</p></div>
@@ -186,6 +251,7 @@ const VaultPage = () => {
             <label className="block sm:col-span-2"><span className="text-xs font-bold uppercase tracking-wider text-slate-500">Notes <span className="font-normal normal-case text-slate-400">(optional)</span></span><textarea value={form.notes} onChange={(event) => updateForm("notes", event.target.value)} placeholder="Add anything helpful about this account" rows={3} className="mt-2 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#74aeb7] focus:ring-2 focus:ring-[#dceff1]" /></label>
           </div>
 
+          {errors.form && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{errors.form}</p>}
           <div className="mt-7 flex items-center gap-2">{editingId && <button type="button" onClick={() => setConfirmation("delete")} aria-label="Delete credential" title="Delete credential" className="grid h-10 w-10 place-items-center rounded-xl text-rose-600 transition hover:bg-rose-50"><Trash2 size={17} /></button>}<div className="ml-auto flex gap-2"><button type="button" onClick={requestClose} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100">Cancel</button><button type="submit" className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white">{editingId ? "Save changes" : "Add credential"}</button></div></div>
           </div>
           </ScrollArea>

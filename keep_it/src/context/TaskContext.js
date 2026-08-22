@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { getTaskClient } from "@/data/tasks/taskClient";
 
 export const toISODate = (date) => {
   const year = date.getFullYear();
@@ -16,24 +17,73 @@ export const relativeDate = (days) => {
   return toISODate(date);
 };
 
-const starterTasks = [
-  { id: "1", title: "Review monthly budget", due: relativeDate(0), done: false },
-  { id: "2", title: "Organize vault credentials", due: relativeDate(1), done: false },
-  { id: "3", title: "Write project notes", due: relativeDate(2), done: true },
-  { id: "4", title: "Plan next week", due: relativeDate(3), done: false },
-];
+const emptyTasks = [];
 
 const TaskContext = createContext(null);
 
 export const TaskProvider = ({ children }) => {
-  const [tasks, setTasks] = useState(starterTasks);
+  const [tasks, setTasks] = useState(emptyTasks);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const clientRef = useRef(null);
 
-  const addTask = (task) => setTasks((current) => [{ id: crypto.randomUUID(), title: task.title, due: task.due || "", done: false }, ...current]);
-  const updateTask = (id, changes) => setTasks((current) => current.map((task) => task.id === id ? { id: task.id, title: changes.title ?? task.title, due: changes.due ?? task.due, done: changes.done ?? task.done } : task));
-  const deleteTask = (id) => setTasks((current) => current.filter((task) => task.id !== id));
-  const toggleTask = (id) => setTasks((current) => current.map((task) => task.id === id ? { ...task, done: !task.done } : task));
+  useEffect(() => {
+    let active = true;
+    const taskClient = getTaskClient(emptyTasks);
+    clientRef.current = taskClient;
 
-  return <TaskContext.Provider value={{ tasks, setTasks, addTask, updateTask, deleteTask, toggleTask }}>{children}</TaskContext.Provider>;
+    taskClient.list()
+      .then((storedTasks) => {
+        if (active) setTasks(storedTasks);
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : "Tasks could not be loaded.");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => { active = false; };
+  }, []);
+
+  const getClient = useCallback(() => {
+    if (!clientRef.current) clientRef.current = getTaskClient(emptyTasks);
+    return clientRef.current;
+  }, []);
+
+  const runMutation = useCallback(async (operation, applyResult) => {
+    setError("");
+    try {
+      const result = await operation(getClient());
+      applyResult(result);
+      return result;
+    } catch (mutationError) {
+      setError(mutationError instanceof Error ? mutationError.message : "The task change could not be saved.");
+      throw mutationError;
+    }
+  }, [getClient]);
+
+  const addTask = useCallback((task) => runMutation(
+    (taskClient) => taskClient.create(task),
+    (createdTask) => setTasks((current) => [createdTask, ...current]),
+  ), [runMutation]);
+
+  const updateTask = useCallback((id, changes) => runMutation(
+    (taskClient) => taskClient.update(id, changes),
+    (updatedTask) => setTasks((current) => current.map((task) => task.id === id ? updatedTask : task)),
+  ), [runMutation]);
+
+  const deleteTask = useCallback((id) => runMutation(
+    (taskClient) => taskClient.delete(id),
+    (deleted) => { if (deleted) setTasks((current) => current.filter((task) => task.id !== id)); },
+  ), [runMutation]);
+
+  const toggleTask = useCallback((id) => runMutation(
+    (taskClient) => taskClient.toggle(id),
+    (updatedTask) => setTasks((current) => current.map((task) => task.id === id ? updatedTask : task)),
+  ), [runMutation]);
+
+  return <TaskContext.Provider value={{ tasks, isLoading, error, addTask, updateTask, deleteTask, toggleTask }}>{children}</TaskContext.Provider>;
 };
 
 export const useTasks = () => {

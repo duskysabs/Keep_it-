@@ -52,7 +52,10 @@ const NoteEditor = ({ note, isNew, onChange, onClose, onArchive, onDelete, onTog
     onFocus: () => setActiveArea("title"),
     onSelectionUpdate: updateToolbar,
     onTransaction: updateToolbar,
-    onUpdate: ({ editor }) => onChange(note.id, { title: editor.getHTML() }),
+    onUpdate: ({ editor }) => onChange(note.id, {
+      title: editor.getJSON(),
+      titleText: editor.getText({ blockSeparator: " " }).trim(),
+    }),
   });
 
   const bodyEditor = useEditor({
@@ -63,7 +66,10 @@ const NoteEditor = ({ note, isNew, onChange, onClose, onArchive, onDelete, onTog
     onFocus: () => setActiveArea("body"),
     onSelectionUpdate: updateToolbar,
     onTransaction: updateToolbar,
-    onUpdate: ({ editor }) => onChange(note.id, { content: editor.getHTML() }),
+    onUpdate: ({ editor }) => onChange(note.id, {
+      content: editor.getJSON(),
+      contentText: editor.getText({ blockSeparator: " " }).trim(),
+    }),
   });
 
   useEffect(() => {
@@ -78,8 +84,10 @@ const NoteEditor = ({ note, isNew, onChange, onClose, onArchive, onDelete, onTog
 
   const activeEditor = activeArea === "title" ? titleEditor : bodyEditor;
   const currentContent = () => ({
-    title: titleEditor?.getHTML() ?? note.title,
-    content: bodyEditor?.getHTML() ?? note.content,
+    title: titleEditor?.getJSON() ?? note.title,
+    titleText: titleEditor?.getText({ blockSeparator: " " }).trim() ?? note.titleText,
+    content: bodyEditor?.getJSON() ?? note.content,
+    contentText: bodyEditor?.getText({ blockSeparator: " " }).trim() ?? note.contentText,
   });
 
   const runCommand = (command) => {

@@ -4,14 +4,25 @@ import { useMemo, useState } from "react";
 import { AlertCircle, CheckCircle2, Files, Pin, Plus, Search } from "lucide-react";
 import NoteEditor from "./NoteEditor";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useNotes } from "@/context/NoteContext";
 import SelectField from "@/components/ui/SelectField";
+import { emptyNoteDocument } from "@/data/notes/noteMapper";
 
 const filters = ["All notes", "Pinned", "Personal", "Work", "School", "Archive"];
 
-const plainText = (content = "") => content.replace(/<br\s*\/?>/gi, "\n").replace(/<\/div>|<\/p>|<\/li>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+const updatedLabel = (value) => {
+  if (!value) return "Just now";
+  const date = new Date(value);
+  const difference = Date.now() - date.getTime();
+  if (difference < 60_000) return "Just now";
+  if (difference < 3_600_000) return `${Math.floor(difference / 60_000)} minutes ago`;
+  if (difference < 86_400_000) return `${Math.floor(difference / 3_600_000)} hours ago`;
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
+};
 
 const NotesPage = () => {
-  const { notes, setNotes, recordActivity } = useWorkspace();
+  const { notes, addNote, updateNote, deleteNote } = useNotes();
+  const { recordActivity } = useWorkspace();
   const [selectedId, setSelectedId] = useState("");
   const [newNoteId, setNewNoteId] = useState("");
   const [activeFilter, setActiveFilter] = useState("All notes");
@@ -26,37 +37,59 @@ const NotesPage = () => {
     if (activeFilter === "Pinned") return note.pinned;
     if (["Personal", "Work", "School"].includes(activeFilter)) return note.tag === activeFilter;
     return true;
-  }).filter((note) => `${plainText(note.title)} ${plainText(note.content)}`.toLowerCase().includes(search.toLowerCase())).sort((a, b) => Number(b.pinned) - Number(a.pinned)), [activeFilter, notes, search]);
+  }).filter((note) => `${note.titleText} ${note.contentText}`.toLowerCase().includes(search.toLowerCase())).sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt)), [activeFilter, notes, search]);
 
   const showToast = (message) => { setToast(message); setTimeout(() => setToast(""), 1800); };
-  const updateNote = (id, changes) => setNotes((current) => current.map((note) => note.id === id ? { ...note, ...changes, updatedAt: "Just now" } : note));
+  const saveNoteChanges = (id, changes) => updateNote(id, changes).catch(() => showToast("Note could not be saved"));
 
-  const createNote = () => {
-    const id = crypto.randomUUID();
-    const note = { id, title: "", content: "", tag: ["Personal", "Work", "School"].includes(activeFilter) ? activeFilter : "Personal", pinned: false, archived: false, updatedAt: "Just now" };
-    setNotes((current) => [note, ...current]);
-    recordActivity("note", "Created a note", "Untitled note");
-    setSelectedId(id); setNewNoteId(id); setActiveFilter("All notes");
+  const createNote = async () => {
+    try {
+      const note = await addNote({
+        title: emptyNoteDocument(),
+        titleText: "",
+        content: emptyNoteDocument(),
+        contentText: "",
+        tag: ["Personal", "Work", "School"].includes(activeFilter) ? activeFilter : "Personal",
+        pinned: false,
+        archived: false,
+      });
+      recordActivity("note", "Created a note", "Untitled note");
+      setSelectedId(note.id); setNewNoteId(note.id); setActiveFilter("All notes");
+    } catch {
+      showToast("Note could not be created");
+    }
   };
 
-  const closeEditor = ({ title, content }) => {
+  const closeEditor = async ({ title, titleText, content, contentText }) => {
     if (!selectedNote) return;
-    if (!plainText(title) && !plainText(content)) { setNotes((current) => current.filter((note) => note.id !== selectedId)); showToast("Empty note removed"); }
-    else { updateNote(selectedId, { title, content }); recordActivity("note", "Updated a note", plainText(title) || "Untitled note"); }
-    setSelectedId(""); setNewNoteId("");
+    try {
+      if (!titleText && !contentText) { await deleteNote(selectedId); showToast("Empty note removed"); }
+      else { await updateNote(selectedId, { title, titleText, content, contentText }); recordActivity("note", "Updated a note", titleText || "Untitled note"); }
+      setSelectedId(""); setNewNoteId("");
+    } catch {
+      showToast("Note could not be saved");
+    }
   };
 
-  const archiveNote = ({ title, content }) => {
+  const archiveNote = async ({ title, titleText, content, contentText }) => {
     if (!selectedNote) return;
-    if (!plainText(title) && !plainText(content)) { setNotes((current) => current.filter((note) => note.id !== selectedId)); showToast("Empty note removed"); }
-    else { updateNote(selectedId, { title, content, archived: !selectedNote.archived }); showToast(selectedNote.archived ? "Note restored" : "Note archived"); recordActivity("note", selectedNote.archived ? "Restored a note" : "Archived a note", plainText(title) || "Untitled note"); }
-    setSelectedId("");
+    try {
+      if (!titleText && !contentText) { await deleteNote(selectedId); showToast("Empty note removed"); }
+      else { await updateNote(selectedId, { title, titleText, content, contentText, archived: !selectedNote.archived }); showToast(selectedNote.archived ? "Note restored" : "Note archived"); recordActivity("note", selectedNote.archived ? "Restored a note" : "Archived a note", titleText || "Untitled note"); }
+      setSelectedId("");
+    } catch {
+      showToast("Note could not be archived");
+    }
   };
 
-  const deleteNote = () => {
-    setNotes((current) => current.filter((note) => note.id !== selectedId));
-    recordActivity("note", "Deleted a note", plainText(selectedNote?.title) || "Untitled note");
-    setConfirmDelete(false); setSelectedId(""); setNewNoteId(""); showToast("Note deleted");
+  const handleDeleteNote = async () => {
+    try {
+      await deleteNote(selectedId);
+      recordActivity("note", "Deleted a note", selectedNote?.titleText || "Untitled note");
+      setConfirmDelete(false); setSelectedId(""); setNewNoteId(""); showToast("Note deleted");
+    } catch {
+      showToast("Note could not be deleted");
+    }
   };
 
   const noteCount = (name) => {
@@ -93,14 +126,14 @@ const NotesPage = () => {
       {visibleNotes.length ? <section className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleNotes.map((note) => (
         <article key={note.id} onClick={() => { setSelectedId(note.id); setConfirmDelete(false); }} className="group flex min-h-56 cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#b9dadd] hover:shadow-md">
           <div className="flex items-start justify-between gap-4"><div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><Files size={17} /></div>{note.pinned && <Pin size={15} className="fill-[#167d8d] text-[#167d8d]" />}</div>
-          <h3 className="note-card-title mt-4 truncate font-bold text-slate-900" dangerouslySetInnerHTML={{ __html: note.title || "Untitled note" }} />
-          <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-500">{plainText(note.content) || "Empty note. Open it to start writing."}</p>
-          <div className="mt-auto flex items-center justify-between pt-5"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">{note.tag}</span><span className="text-xs text-slate-400">{note.updatedAt}</span></div>
+          <h3 className="note-card-title mt-4 truncate font-bold text-slate-900">{note.titleText || "Untitled note"}</h3>
+          <p className="mt-2 line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-500">{note.contentText || "Empty note. Open it to start writing."}</p>
+          <div className="mt-auto flex items-center justify-between pt-5"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">{note.tag}</span><span className="text-xs text-slate-400">{updatedLabel(note.updatedAt)}</span></div>
         </article>
       ))}</section> : <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"><Files className="mx-auto text-slate-300" /><p className="mt-3 font-semibold text-slate-700">{search ? "No matching notes" : activeFilter === "All notes" ? "Your notes are empty" : `No notes in ${activeFilter}`}</p><p className="mt-1 text-sm text-slate-400">{search ? `Nothing matches “${search}”.` : activeFilter === "All notes" ? "Create your first note to start writing." : "Create a note here or choose another filter."}</p>{search ? <button onClick={() => setSearch("")} className="mt-4 text-sm font-bold text-[#167d8d]">Clear search</button> : <button onClick={createNote} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> New note</button>}</div>}
 
-      {selectedNote && <NoteEditor note={selectedNote} isNew={selectedId === newNoteId} onChange={updateNote} onClose={closeEditor} onArchive={archiveNote} onDelete={() => setConfirmDelete(true)} onTogglePinned={() => updateNote(selectedId, { pinned: !selectedNote.pinned })} />}
-      {confirmDelete && selectedNote && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-4"><div role="alertdialog" aria-modal="true" aria-labelledby="delete-note-title" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"><div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-50 text-rose-600"><AlertCircle size={18} /></div><h3 id="delete-note-title" className="mt-4 font-bold text-slate-950">Delete {plainText(selectedNote.title) || "Untitled note"}?</h3><p className="mt-2 text-sm leading-6 text-slate-500">This note will be permanently removed. This cannot be undone.</p><div className="mt-5 flex justify-end gap-2"><button onClick={() => setConfirmDelete(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100">Keep note</button><button onClick={deleteNote} className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Delete</button></div></div></div>}
+      {selectedNote && <NoteEditor note={selectedNote} isNew={selectedId === newNoteId} onChange={saveNoteChanges} onClose={closeEditor} onArchive={archiveNote} onDelete={() => setConfirmDelete(true)} onTogglePinned={() => saveNoteChanges(selectedId, { pinned: !selectedNote.pinned })} />}
+      {confirmDelete && selectedNote && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-4"><div role="alertdialog" aria-modal="true" aria-labelledby="delete-note-title" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl"><div className="grid h-10 w-10 place-items-center rounded-xl bg-rose-50 text-rose-600"><AlertCircle size={18} /></div><h3 id="delete-note-title" className="mt-4 font-bold text-slate-950">Delete {selectedNote.titleText || "Untitled note"}?</h3><p className="mt-2 text-sm leading-6 text-slate-500">This note will be permanently removed. This cannot be undone.</p><div className="mt-5 flex justify-end gap-2"><button onClick={() => setConfirmDelete(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100">Keep note</button><button onClick={handleDeleteNote} className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700">Delete</button></div></div></div>}
     </main>
   );
 };

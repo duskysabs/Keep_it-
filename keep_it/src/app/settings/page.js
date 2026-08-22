@@ -1,43 +1,79 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Clipboard, Database, Download, Laptop, Lock, LockKeyhole, Moon, Palette, RefreshCw, ShieldCheck, Sparkles, Sun, UserRound, X } from "lucide-react";
+import { Check, Clipboard, Database, KeyRound, Laptop, Lock, LockKeyhole, Moon, Palette, ShieldCheck, Sparkles, Sun, UserRound, X } from "lucide-react";
+import VaultAccessDialog from "@/components/VaultAccessDialog";
 import SelectField from "@/components/ui/SelectField";
+import { useVault } from "@/context/VaultContext";
 
-const SettingToggle = ({ label, description, enabled, onChange }) => (
+const SettingToggle = ({ label, description, enabled, onChange, disabled = false }) => (
   <div className="flex items-center justify-between gap-4 py-4">
     <div><p className="text-sm font-semibold text-slate-800">{label}</p><p className="mt-1 text-xs leading-5 text-slate-400">{description}</p></div>
-    <button type="button" role="switch" aria-checked={enabled} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition ${enabled ? "bg-[#167d8d]" : "bg-slate-200"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${enabled ? "left-6" : "left-1"}`} /></button>
+    <button type="button" role="switch" aria-checked={enabled} disabled={disabled} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${enabled ? "bg-[#167d8d]" : "bg-slate-200"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${enabled ? "left-6" : "left-1"}`} /></button>
   </div>
 );
 
 const SecuritySettings = () => {
-  const [autoLock, setAutoLock] = useState(true);
-  const [lockOnClose, setLockOnClose] = useState(true);
-  const [clearClipboard, setClearClipboard] = useState(true);
+  const { status, error, setupVault, unlockVault, lockVault, changeMasterPassword, updateVaultSettings } = useVault();
+  const [dialogMode, setDialogMode] = useState("");
+  const autoLock = status.settings.autoLockMinutes > 0;
+  const clearClipboard = status.settings.clearClipboardSeconds > 0;
+  const accessLabel = !status.configured ? "Not configured" : status.unlocked ? "Unlocked" : "Locked";
+  const accessTone = status.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600";
+  const autoLockOptions = [
+    { value: "1", label: "1 minute" },
+    { value: "5", label: "5 minutes" },
+    { value: "15", label: "15 minutes" },
+    { value: "30", label: "30 minutes" },
+    { value: "60", label: "1 hour" },
+  ];
+  const clipboardOptions = [
+    { value: "15", label: "15 seconds" },
+    { value: "30", label: "30 seconds" },
+    { value: "60", label: "60 seconds" },
+  ];
+
+  const formatTimestamp = (value) => value
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+    : "Never";
+
+  const submitAccessDialog = async (values) => {
+    if (dialogMode === "setup") await setupVault(values);
+    else if (dialogMode === "unlock") await unlockVault(values);
+    else await changeMasterPassword(values);
+    setDialogMode("");
+  };
+
+  const saveVaultSettings = (changes) => updateVaultSettings(changes).catch(() => undefined);
 
   return (
     <div className="space-y-4" id="security">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><ShieldCheck size={19} /></div><div><h3 className="font-bold text-slate-900">Vault access</h3><p className="mt-1 text-xs leading-5 text-slate-400">Your master password protects access to encrypted credentials.</p></div></div>
-          <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Configured</span>
+          <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${accessTone}`}>{accessLabel}</span>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2"><button className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700">Change master password</button><button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"><Lock size={14} /> Lock vault now</button></div>
-        <p className="mt-3 text-xs text-slate-400">Last changed: Never</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {!status.configured && <button onClick={() => setDialogMode("setup")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700"><KeyRound size={14} /> Create master password</button>}
+          {status.configured && !status.unlocked && <button onClick={() => setDialogMode("unlock")} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700"><KeyRound size={14} /> Unlock vault</button>}
+          {status.configured && <button onClick={() => setDialogMode("change")} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">Change master password</button>}
+          <button disabled={!status.unlocked} onClick={() => lockVault().catch(() => undefined)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"><Lock size={14} /> Lock vault now</button>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Last password change: {formatTimestamp(status.settings.lastPasswordChangeAt)}</p>
+        {error && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">{error}</p>}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white px-5">
         <div className="border-b border-slate-100 py-5"><div className="flex items-center gap-2"><LockKeyhole size={17} className="text-slate-400" /><h3 className="font-bold text-slate-900">Auto-lock</h3></div><p className="mt-1 text-xs text-slate-400">Control when Keep_it! asks for your master password again.</p></div>
-        <SettingToggle label="Auto-lock vault" description="Lock the vault after a period without activity." enabled={autoLock} onChange={() => setAutoLock(!autoLock)} />
-        {autoLock && <div className="flex items-center justify-between gap-4 border-t border-slate-100 py-4"><span className="text-sm font-semibold text-slate-800">Lock after</span><SelectField defaultValue="5 minutes" options={["1 minute", "5 minutes", "15 minutes", "30 minutes", "1 hour"]} ariaLabel="Lock after" compact /></div>}
-        <div className="border-t border-slate-100"><SettingToggle label="Lock when app closes" description="Require your master password each time the app starts." enabled={lockOnClose} onChange={() => setLockOnClose(!lockOnClose)} /></div>
+        <SettingToggle label="Auto-lock vault" description="Lock the vault after a period without activity." enabled={autoLock} disabled={!status.configured} onChange={() => saveVaultSettings({ autoLockMinutes: autoLock ? 0 : 5 })} />
+        {autoLock && <div className="flex items-center justify-between gap-4 border-t border-slate-100 py-4"><span className="text-sm font-semibold text-slate-800">Lock after</span><SelectField value={String(status.settings.autoLockMinutes)} onValueChange={(value) => saveVaultSettings({ autoLockMinutes: Number(value) })} options={autoLockOptions} ariaLabel="Lock after" compact /></div>}
+        <div className="border-t border-slate-100"><SettingToggle label="Lock when app closes" description="Always enabled: the encryption key is kept only in memory and is discarded when the app closes." enabled disabled /></div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white px-5">
         <div className="border-b border-slate-100 py-5"><div className="flex items-center gap-2"><Clipboard size={17} className="text-slate-400" /><h3 className="font-bold text-slate-900">Clipboard privacy</h3></div></div>
-        <SettingToggle label="Clear copied passwords" description="Remove copied passwords from the clipboard automatically." enabled={clearClipboard} onChange={() => setClearClipboard(!clearClipboard)} />
-        {clearClipboard && <div className="flex items-center justify-between gap-4 border-t border-slate-100 py-4"><span className="text-sm font-semibold text-slate-800">Clear after</span><SelectField defaultValue="30 seconds" options={["15 seconds", "30 seconds", "60 seconds"]} ariaLabel="Clear clipboard after" compact /></div>}
+        <SettingToggle label="Clear copied passwords" description="Remove copied passwords from the clipboard automatically." enabled={clearClipboard} disabled={!status.configured} onChange={() => saveVaultSettings({ clearClipboardSeconds: clearClipboard ? 0 : 30 })} />
+        {clearClipboard && <div className="flex items-center justify-between gap-4 border-t border-slate-100 py-4"><span className="text-sm font-semibold text-slate-800">Clear after</span><SelectField value={String(status.settings.clearClipboardSeconds)} onValueChange={(value) => saveVaultSettings({ clearClipboardSeconds: Number(value) })} options={clipboardOptions} ariaLabel="Clear clipboard after" compact /></div>}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -49,9 +85,10 @@ const SecuritySettings = () => {
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-2"><Database size={17} className="text-slate-400" /><h3 className="font-bold text-slate-900">Backup and recovery</h3></div><p className="mt-1 text-xs leading-5 text-slate-400">Create an encrypted copy of your local data or restore a previous copy.</p>
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">Your master password cannot be recovered. Keep it somewhere safe or you may lose access to encrypted data.</div>
-        <div className="mt-4 flex flex-wrap gap-2"><button className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white"><Download size={14} /> Create backup</button><button className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600"><RefreshCw size={14} /> Restore backup</button></div>
-        <p className="mt-3 text-xs text-slate-400">Most recent backup: No backup created yet</p>
+        <p className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">Encrypted backup and restore will be added when the full application database is finalized. No backup action is exposed until it can safely include every module.</p>
       </section>
+
+      {dialogMode && <VaultAccessDialog mode={dialogMode} onSubmit={submitAccessDialog} onClose={() => setDialogMode("")} />}
     </div>
   );
 };
